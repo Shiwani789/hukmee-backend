@@ -1,0 +1,1633 @@
+{
+  "info": {
+    "name": "HUKMEE API — Active operations",
+    "description": "Contains the mounted write operations and verified technician self-service reads. Write request bodies mirror active Zod validators. No multipart/image upload is implemented. Replace example UUIDs and tokens before use. The collection does not seed or modify a database by itself. Admin catalogue CRUD examples are in the “Admin catalogue CRUD” folder. Catalogue image references and Parts sellingPrice use existing JSON fields; multipart file upload is unavailable and no multipart examples are included. Auth register/login also set an HttpOnly session_token cookie backed by PostgreSQL; Postman can send it automatically for later requests. Existing Bearer token examples remain supported for mobile/API clients. Cookie refresh can be sent with an empty request body. Login/register establish persistent connect.sid Express sessions in the Prisma express_session table, plus the existing revocable refresh-token session cookie. ",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "userToken",
+      "value": ""
+    },
+    {
+      "key": "technicianToken",
+      "value": ""
+    },
+    {
+      "key": "managerToken",
+      "value": ""
+    },
+    {
+      "key": "sessionId",
+      "value": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "key": "addressId",
+      "value": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "key": "deviceId",
+      "value": "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "key": "serviceId",
+      "value": "00000000-0000-4000-8000-000000000004"
+    },
+    {
+      "key": "bookingId",
+      "value": "00000000-0000-4000-8000-000000000005"
+    },
+    {
+      "key": "estimateId",
+      "value": "00000000-0000-4000-8000-000000000006"
+    },
+    {
+      "key": "technicianUserId",
+      "value": "00000000-0000-4000-8000-000000000007"
+    },
+    {
+      "key": "modelId",
+      "value": "00000000-0000-4000-8000-000000000008"
+    }
+  ],
+  "item": [
+    {
+      "name": "Technician self-service (read only)",
+      "item": [
+        {
+          "name": "Get own technician profile",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/technicians/profile",
+            "description": "TECHNICIAN role. Returns only own active/approvedAt metadata and service skills; no onboarding documents or private URLs."
+          }
+        },
+        {
+          "name": "Get own onboarding approval metadata",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/technicians/onboarding/status",
+            "description": "TECHNICIAN role. Returns existing active and approvedAt fields only. The current schema has no submitted/rejected/resubmission state; this endpoint does not infer one."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication and sessions",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Example User\",\n  \"email\": \"user@example.com\",\n  \"password\": \"change-this-password\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register",
+            "description": "Public, rate-limited. email or phone is required; password length 12–128. Also sets an HttpOnly session_token cookie. Sets connect.sid backed by the Prisma express_session store and the existing session_token cookie. Browser clients should send credentials."
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"user@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Public, rate-limited Davai-compatible OTP login start. Sends a CONTACT_VERIFICATION OTP; verify at /auth/verify-login. Sets session cookies only after successful OTP verification."
+          }
+        },
+        {
+          "name": "Admin login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/admin/login",
+            "description": "Admin or SUPER_ADMIN account; also sets persistent session cookies. Sets connect.sid backed by the Prisma express_session store and the existing session_token cookie. Browser clients should send credentials.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"change-this-password\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Request login OTP",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/send-otp",
+            "description": "Public, rate-limited. Uses CONTACT_VERIFICATION OTP; provider must be configured.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"user@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify login OTP",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/verify-login",
+            "description": "Public, rate-limited. On success establishes express-session and refresh-token cookies. On success establishes connect.sid and session_token cookies.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"user@example.com\",\n  \"otp\": \"123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Rotate refresh token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"replace-with-refresh-token-at-least-40-characters\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/refresh",
+            "description": "Public, rate-limited. Can use the HttpOnly session_token cookie with an empty body, or send refreshToken (length 40–256). Successful rotation replaces the cookie."
+          }
+        },
+        {
+          "name": "Request OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"user@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/otp/request",
+            "description": "Public, rate-limited. Sends one active OTP for this identifier."
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"user@example.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/otp/verify",
+            "description": "Public, rate-limited. code is exactly six digits."
+          }
+        },
+        {
+          "name": "Reset password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"user@example.com\",\n  \"code\": \"123456\",\n  \"newPassword\": \"replace-with-12-or-more-characters\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/password-reset",
+            "description": "Public, rate-limited. Password length 12–128."
+          }
+        },
+        {
+          "name": "Forgot password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/forgot-password",
+            "description": "Public, rate-limited. Sends PASSWORD_RESET OTP through the configured provider.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"user@example.com\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Reset password alias",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/reset-password",
+            "description": "Same OTP-protected reset as /auth/password-reset.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"user@example.com\",\n  \"code\": \"123456\",\n  \"newPassword\": \"change-this-password-now\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout current session",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/auth/logout",
+            "description": "Requires an active session_token cookie or a valid Bearer access token. Cookie sessions are revoked server-side and the current cookie is cleared when applicable."
+          }
+        },
+        {
+          "name": "Logout all sessions",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/auth/logout-all",
+            "description": "Requires an active session_token cookie or a valid Bearer access token. Cookie sessions are revoked server-side and the current cookie is cleared when applicable."
+          }
+        },
+        {
+          "name": "Delete account",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/delete-account",
+            "description": "Requires an active session cookie or Bearer token and current password. Deactivates the account, revokes sessions, and preserves historical records.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"confirm-current-password\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Google OAuth (not configured)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/google",
+            "description": "Returns 503 OAUTH_NOT_CONFIGURED until provider setup and account-linking policy are approved."
+          }
+        },
+        {
+          "name": "Facebook OAuth (not configured)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/facebook",
+            "description": "Returns 503 OAUTH_NOT_CONFIGURED until provider setup and account-linking policy are approved."
+          }
+        },
+        {
+          "name": "Revoke own session",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/auth/sessions/{{sessionId}}",
+            "description": "Requires an active session_token cookie or a valid Bearer access token. Cookie sessions are revoked server-side and the current cookie is cleared when applicable."
+          }
+        }
+      ]
+    },
+    {
+      "name": "User, address and device writes",
+      "item": [
+        {
+          "name": "Update own profile",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"displayName\": \"Updated Name\"\n}"
+            },
+            "url": "{{baseUrl}}/users/me",
+            "description": "USER role. displayName is trimmed and 1–120 characters."
+          }
+        },
+        {
+          "name": "Create address",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"label\": \"Home\",\n  \"line1\": \"10 Example Street\",\n  \"city\": \"Pune\",\n  \"postalCode\": \"411001\",\n  \"countryCode\": \"IN\"\n}"
+            },
+            "url": "{{baseUrl}}/addresses",
+            "description": "USER role. Required: line1, city, postalCode, countryCode. countryCode is two characters; optional line2, region, label."
+          }
+        },
+        {
+          "name": "Patch address",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"line1\": \"11 Example Street\"\n}"
+            },
+            "url": "{{baseUrl}}/addresses/{{addressId}}",
+            "description": "USER role, owner-scoped. Body must contain a non-empty subset of address fields."
+          }
+        },
+        {
+          "name": "Delete address",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/addresses/{{addressId}}",
+            "description": "USER role, owner-scoped. No request body; a referenced address may conflict."
+          }
+        },
+        {
+          "name": "Register device",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelId\": \"{{modelId}}\",\n  \"nickname\": \"My phone\",\n  \"serialNumber\": \"SERIAL-EXAMPLE\"\n}"
+            },
+            "url": "{{baseUrl}}/devices",
+            "description": "Bearer required; service requires USER. modelId is UUID; nickname and serialNumber are optional."
+          }
+        },
+        {
+          "name": "Get profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/users/profile",
+            "description": "Authenticated account profile; cookie or Bearer auth."
+          }
+        },
+        {
+          "name": "Update profile with image",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/users/profile",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "displayName",
+                  "value": "Example User",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "+15551234567",
+                  "type": "text"
+                },
+                {
+                  "key": "profileImage",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "description": "Optional profileImage file: JPEG, PNG, or WebP, max 5 MB. Omit the file to keep the existing image URL."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/logout",
+            "description": "Revokes the current session and clears authentication cookies."
+          }
+        },
+        {
+          "name": "Delete account",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/users/account",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"current-password\"\n}"
+            },
+            "description": "Deactivates the account after current-password verification."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Booking lifecycle writes",
+      "item": [
+        {
+          "name": "Create booking request",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"serviceId\": \"{{serviceId}}\",\n  \"addressId\": \"{{addressId}}\",\n  \"problemDescription\": \"Device screen is damaged\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings",
+            "description": "USER role. addressId is optional. problemDescription is 5–2000 characters."
+          }
+        },
+        {
+          "name": "Offer assignment",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"technicianUserId\": \"{{technicianUserId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/assign",
+            "description": "bookings:manage permission. Technician must be eligible under current active/approved/skill checks."
+          }
+        },
+        {
+          "name": "Accept assignment offer",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/accept",
+            "description": "TECHNICIAN role; must own the offered assignment. No request body."
+          }
+        },
+        {
+          "name": "Reject assignment offer",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/reject",
+            "description": "TECHNICIAN role; must own the offered assignment. No request body."
+          }
+        },
+        {
+          "name": "Record inspection",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"findings\": \"Screen glass is cracked\",\n  \"technicianNotes\": \"Device received powered off\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/inspection",
+            "description": "TECHNICIAN role and active, approved accepted assignment. findings 1–10000 characters; technicianNotes optional, max 5000."
+          }
+        },
+        {
+          "name": "Submit estimate",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{technicianToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lines\": [\n    {\n      \"description\": \"Replacement part\",\n      \"quantity\": \"1.00\",\n      \"unitAmount\": \"1250.00\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/estimates",
+            "description": "TECHNICIAN role, accepted assignment and inspection required. 1–100 lines; decimal values are strings, quantity positive, amount non-negative. No pricing policy is implied."
+          }
+        },
+        {
+          "name": "Decide estimate",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{userToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accepted\": true,\n  \"reason\": \"Reviewed\"\n}"
+            },
+            "url": "{{baseUrl}}/bookings/{{bookingId}}/estimates/{{estimateId}}/decision",
+            "description": "USER role and booking owner. accepted is required boolean; reason is optional, max 2000."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin catalogue CRUD (JSON image references; no file upload)",
+      "description": "Admin CRUD routes using existing Prisma fields. Set adminToken and IDs. JSON imageUrl references are optional for Brand, Model, Repair Service and Part. Multipart file upload is not configured.",
+      "item": [
+        {
+          "name": "List brands",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/brands?page=1&pageSize=25&search=Example&active=true",
+            "description": "Requires catalog:manage permission."
+          }
+        },
+        {
+          "name": "Create brand (JSON; no image)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/brands",
+            "description": "Requires catalog:manage. The existing schema has no image field; this request intentionally uses JSON.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example brand\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get brand",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/brands/{{catalogId}}",
+            "description": "Requires catalog:manage permission."
+          }
+        },
+        {
+          "name": "Update brand (JSON; preserve existing image state)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/brands/{{catalogId}}",
+            "description": "Requires catalog:manage. Omitted fields remain unchanged. Image uploads are not supported by this API.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example brand\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Deactivate brand",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/brands/{{catalogId}}",
+            "description": "Requires catalog:manage. DELETE soft-deactivates the record (active=false); it does not delete historical references."
+          }
+        },
+        {
+          "name": "List models",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/models?page=1&pageSize=25&search=Example&active=true",
+            "description": "Requires catalog:manage permission."
+          }
+        },
+        {
+          "name": "Create model (JSON; no image)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/models",
+            "description": "Requires catalog:manage. The existing schema has no image field; this request intentionally uses JSON.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brandId\": \"{{brandId}}\",\n  \"name\": \"Example model\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get model",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/models/{{catalogId}}",
+            "description": "Requires catalog:manage permission."
+          }
+        },
+        {
+          "name": "Update model (JSON; preserve existing image state)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/models/{{catalogId}}",
+            "description": "Requires catalog:manage. Omitted fields remain unchanged. Image uploads are not supported by this API.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example model\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Deactivate model",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/models/{{catalogId}}",
+            "description": "Requires catalog:manage. DELETE soft-deactivates the record (active=false); it does not delete historical references."
+          }
+        },
+        {
+          "name": "List service categories",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/service-categories?page=1&pageSize=25&search=Example&active=true",
+            "description": "Requires catalog:manage permission."
+          }
+        },
+        {
+          "name": "Create service categorie (JSON; no image)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/service-categories",
+            "description": "Requires catalog:manage. The existing schema has no image field; this request intentionally uses JSON.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example category\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get service categorie",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/service-categories/{{catalogId}}",
+            "description": "Requires catalog:manage permission."
+          }
+        },
+        {
+          "name": "Update service categorie (JSON; preserve existing image state)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/service-categories/{{catalogId}}",
+            "description": "Requires catalog:manage. Omitted fields remain unchanged. Image uploads are not supported by this API.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example category\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Deactivate service categorie",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/service-categories/{{catalogId}}",
+            "description": "Requires catalog:manage. DELETE soft-deactivates the record (active=false); it does not delete historical references."
+          }
+        },
+        {
+          "name": "List repair services",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/services?page=1&pageSize=25&search=Example&active=true",
+            "description": "Requires catalog:manage permission."
+          }
+        },
+        {
+          "name": "Create repair service (JSON; no image)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/services",
+            "description": "Requires catalog:manage. The existing schema has no image field; this request intentionally uses JSON.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{categoryId}}\",\n  \"name\": \"Example service\",\n  \"description\": \"Example description\",\n  \"compatibleModelIds\": [\n    \"{{modelId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get repair service",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/services/{{catalogId}}",
+            "description": "Requires catalog:manage permission."
+          }
+        },
+        {
+          "name": "Update repair service (JSON; preserve existing image state)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/services/{{catalogId}}",
+            "description": "Requires catalog:manage. Omitted fields remain unchanged. Image uploads are not supported by this API.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example service\",\n  \"description\": \"Example description\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Deactivate repair service",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/services/{{catalogId}}",
+            "description": "Requires catalog:manage. DELETE soft-deactivates the record (active=false); it does not delete historical references."
+          }
+        },
+        {
+          "name": "List parts",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/parts?page=1&pageSize=25&search=Example&active=true&modelId={{modelId}}",
+            "description": "Requires catalog:manage permission. Optional modelId filters by compatibility."
+          }
+        },
+        {
+          "name": "Create part (JSON; no image)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/parts",
+            "description": "Requires catalog:manage. imageUrl is optional and accepted as a JSON reference; multipart file upload is not implemented. Parts creation requires sellingPrice.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"PART-001\",\n  \"name\": \"Example part\",\n  \"compatibleModelIds\": [\n    \"{{modelId}}\"\n  ],\n  \"sellingPrice\": 99.99\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get part",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/parts/{{catalogId}}",
+            "description": "Requires catalog:manage permission."
+          }
+        },
+        {
+          "name": "Update part (JSON; preserve existing image state)",
+          "request": {
+            "method": "PATCH",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/parts/{{catalogId}}",
+            "description": "Requires catalog:manage. Omitted fields remain unchanged. Image uploads are not supported by this API.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example part\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Deactivate part",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/parts/{{catalogId}}",
+            "description": "Requires catalog:manage. DELETE soft-deactivates the record (active=false); it does not delete historical references."
+          }
+        },
+        {
+          "name": "Create brand (JSON; with image reference)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/brands",
+            "description": "Requires catalog:manage. JSON imageUrl references an existing /uploads path; this endpoint does not upload files.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Example brand\",\n  \"imageUrl\": \"/uploads/catalogue/brand.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create model (JSON; with image reference)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/models",
+            "description": "Requires catalog:manage. JSON imageUrl references an existing /uploads path; this endpoint does not upload files.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"brandId\": \"{{brandId}}\",\n  \"name\": \"Example model\",\n  \"imageUrl\": \"/uploads/catalogue/model.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create repair service (JSON; with image reference)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/services",
+            "description": "Requires catalog:manage. JSON imageUrl references an existing /uploads path; this endpoint does not upload files.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryId\": \"{{categoryId}}\",\n  \"name\": \"Example service\",\n  \"imageUrl\": \"/uploads/catalogue/service.webp\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create part (JSON; with image reference)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/catalog/admin/parts",
+            "description": "Requires catalog:manage. JSON imageUrl references an existing /uploads path; this endpoint does not upload files.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sku\": \"PART-002\",\n  \"name\": \"Example part with image\",\n  \"sellingPrice\": 99.99,\n  \"imageUrl\": \"/uploads/catalogue/part.png\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vendor identity KYC (private documents)",
+      "item": [
+        {
+          "name": "Get document policy",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vendor/kyc/policy",
+            "description": "Authenticated VENDOR or TECHNICIAN. Shows enabled types and policy rules; no Aadhaar/PAN requirement is enabled by default."
+          }
+        },
+        {
+          "name": "Get my KYC status",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vendor/kyc/status",
+            "description": "Authenticated VENDOR or TECHNICIAN. Returns current status, completed steps, missing requirements, masked document numbers, and review feedback."
+          }
+        },
+        {
+          "name": "Get personal details",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vendor/kyc/personal-details"
+          }
+        },
+        {
+          "name": "Save personal details",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/vendor/kyc/personal-details",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Example Vendor\",\n  \"email\": \"vendor@example.com\",\n  \"phone\": \"+919876543210\",\n  \"businessName\": \"Example Repairs\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get address",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vendor/kyc/address"
+          }
+        },
+        {
+          "name": "Save address",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/vendor/kyc/address",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"line1\": \"12 Example Road\",\n  \"city\": \"Pune\",\n  \"state\": \"Maharashtra\",\n  \"postalCode\": \"411001\",\n  \"countryCode\": \"IN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get identity documents",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vendor/kyc/identity"
+          }
+        },
+        {
+          "name": "Upload identity document",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/vendor/kyc/identity",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "documentType",
+                  "value": "PAN",
+                  "type": "text"
+                },
+                {
+                  "key": "documentNumber",
+                  "value": "ABCDE1234F",
+                  "type": "text"
+                },
+                {
+                  "key": "nameOnDocument",
+                  "value": "Example Vendor",
+                  "type": "text"
+                },
+                {
+                  "key": "frontImage",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "description": "Authenticated VENDOR or TECHNICIAN. Multipart form-data. Upload one approved document type; images and document number remain optional unless policy requires them. Repeat to submit other types."
+          }
+        },
+        {
+          "name": "Get professional details",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vendor/kyc/professional-details"
+          }
+        },
+        {
+          "name": "Save professional details",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/vendor/kyc/professional-details",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"experienceYears\": 3,\n  \"services\": [\n    \"00000000-0000-4000-8000-000000000001\"\n  ],\n  \"description\": \"Mobile phone repair experience\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Replace the example service UUID with an active RepairService ID. Service selection is stored through TechnicianSkill."
+          }
+        },
+        {
+          "name": "Get bank details (masked)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/vendor/kyc/bank-details"
+          }
+        },
+        {
+          "name": "Save bank details (optional by default)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/vendor/kyc/bank-details",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountHolderName\": \"Example Vendor\",\n  \"accountNumber\": \"123456789012\",\n  \"ifscCode\": \"ABCD0123456\",\n  \"bankName\": \"Example Bank\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Submit KYC for review",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/vendor/kyc/submit",
+            "description": "Authenticated VENDOR or TECHNICIAN. Submission checks only the configured mandatory documents and fields."
+          }
+        },
+        {
+          "name": "Admin pending Vendor KYC",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/vendor-kyc",
+            "description": "ADMIN/SUPER_ADMIN only."
+          }
+        },
+        {
+          "name": "Admin Vendor KYC detail",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/vendor-kyc/{{kycApplicationId}}",
+            "description": "ADMIN/SUPER_ADMIN only. ID numbers are masked; private file routes are separately authorized and audited."
+          }
+        },
+        {
+          "name": "Admin review Vendor KYC",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/admin/vendor-kyc/{{kycApplicationId}}/review",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"RESUBMISSION_REQUIRED\",\n  \"feedback\": \"Please provide an updated approved identity document.\"\n}"
+            },
+            "description": "ADMIN/SUPER_ADMIN only. REJECTED and RESUBMISSION_REQUIRED require feedback; approval requires all configured required and uploaded documents to be approved."
+          }
+        }
+      ]
+    }
+  ]
+}

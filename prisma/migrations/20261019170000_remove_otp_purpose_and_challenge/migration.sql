@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS "OtpChallenge";
+DROP TYPE IF EXISTS "OtpPurpose";

@@ -1,0 +1,630 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  USER
+  VENDOR
+  WORKER
+  DELIVERY_PARTNER
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED
+  PENDING
+}
+
+enum VendorKycStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  RESUBMISSION_REQUIRED
+}
+
+enum VendorIdentityDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RESUBMISSION_REQUIRED
+}
+
+enum BookingStatus {
+  REQUESTED
+  ASSIGNED
+  ACCEPTED
+  CANCELLED
+  COMPLETED
+}
+
+enum AssignmentStatus {
+  OFFERED
+  ACCEPTED
+  REJECTED
+  REVOKED
+}
+
+enum EstimateStatus {
+  DRAFT
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  SUPERSEDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum InventoryMovementType {
+  RECEIPT
+  ADJUSTMENT
+  ISSUE
+  RETURN
+  TRANSFER_IN
+  TRANSFER_OUT
+  CONSUMPTION
+}
+
+// ── Authentication & Access Control ───────────────────────────────────────────────
+model Role {
+  id          String       @id @default(uuid()) @db.Uuid
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  name        UserRole     @unique
+  user        User[]
+  permissions Permission[] @relation("RolePermissions")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @db.Uuid
+  action      String
+  resource    String
+  description String?
+  roles       Role[]  @relation("RolePermissions")
+
+  @@unique([action, resource])
+}
+
+model Session {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @db.Uuid
+  refreshTokenHash String    @unique
+  ipAddress        String?
+  userAgent        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model ExpressSession {
+  sid    String   @id(map: "session_pkey") @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("express_session")
+}
+
+// ── User Profiles & Addresses ─────────────────────────────────────────────────────
+model User {
+  id                            String                 @id @default(uuid()) @db.Uuid
+  email                         String?                @unique
+  phone                         String?                @unique
+  password                      String
+  displayName                   String?
+  firstName                     String?
+  lastName                      String?
+  profileImage                  String?
+  roleId                        String                 @db.Uuid
+  status                        AccountStatus          @default(PENDING)
+  isDeleted                     Boolean                @default(false)
+  deletedAt                     DateTime?
+  isActive                      Boolean                @default(true)
+  emailVerifiedAt               DateTime?
+  phoneVerifiedAt               DateTime?
+  lastLoginAt                   DateTime?
+  createdAt                     DateTime               @default(now())
+  updatedAt                     DateTime               @updatedAt
+  role                          Role                   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  sessions                      Session[]
+  addresses                     Address[]
+  userDevices                   UserDevice[]
+  technicianProfile             TechnicianProfile?
+  vendorKycApplication          VendorKycApplication?  @relation("VendorKycVendor")
+  vendorKycReviewedApplications VendorKycApplication[] @relation("VendorKycApplicationReviewer")
+  vendorKycReviews              VendorKycReviewLog[]   @relation("VendorKycReviewer")
+  bookings                      Booking[]              @relation("BookingUser")
+  auditLogs                     AuditLog[]
+
+  @@index([isActive])
+}
+
+enum AddressType {
+  HOME
+  WORK
+  OTHER
+}
+
+model Address {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @db.Uuid
+  recipientName String?
+  phone         String?     @db.VarChar(24)
+  type          AddressType @default(HOME)
+  label         String?
+  line1         String
+  line2         String?
+  city          String
+  region        String?
+  postalCode    String
+  country       String?
+  countryCode   String?     @db.VarChar(2)
+  latitude      Float?
+  longitude     Float?
+  isDefault     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  bookings      Booking[]
+
+  @@index([userId])
+}
+
+model UserDevice {
+  id           String      @id @default(uuid()) @db.Uuid
+  userId       String      @db.Uuid
+  modelId      String      @db.Uuid
+  nickname     String?
+  serialNumber String?
+  createdAt    DateTime    @default(now())
+  user         User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  model        DeviceModel @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  bookings     Booking[]
+
+  @@index([userId])
+}
+
+// ── Device Brand & Model Catalog ──────────────────────────────────────────────────
+model Brand {
+  id     String        @id @default(uuid()) @db.Uuid
+  name   String        @unique
+  active Boolean       @default(true)
+  image  String?       @map("imageUrl")
+  models DeviceModel[]
+}
+
+model DeviceModel {
+  id                   String                       @id @default(uuid()) @db.Uuid
+  brandId              String                       @db.Uuid
+  name                 String
+  active               Boolean                      @default(true)
+  image                String?                      @map("imageUrl")
+  brand                Brand                        @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  userDevices          UserDevice[]
+  serviceCompatibility DeviceServiceCompatibility[]
+  partCompatibility    PartCompatibility[]
+
+  @@unique([brandId, name])
+  @@index([brandId, active])
+  @@map("Model")
+}
+
+// ── Vendor KYC & Verification ─────────────────────────────────────────────────────
+model VendorKycApplication {
+  id                   String                   @id @default(uuid()) @db.Uuid
+  vendorUserId         String                   @unique @db.Uuid
+  status               VendorKycStatus          @default(DRAFT)
+  submittedAt          DateTime?
+  reviewedAt           DateTime?
+  reviewedById         String?                  @db.Uuid
+  adminFeedback        String?
+  personalDetails      Json?
+  addressDetails       Json?
+  professionalDetails  Json?
+  encryptedBankDetails String?
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  vendor               User                     @relation("VendorKycVendor", fields: [vendorUserId], references: [id], onDelete: Restrict)
+  reviewedBy           User?                    @relation("VendorKycApplicationReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  documents            VendorIdentityDocument[]
+  reviewLogs           VendorKycReviewLog[]
+
+  @@index([status, submittedAt])
+}
+
+model VendorIdentityDocument {
+  id                      String                       @id @default(uuid()) @db.Uuid
+  kycApplicationId        String                       @db.Uuid
+  documentType            String
+  encryptedDocumentNumber String?
+  maskedDocumentNumber    String?
+  nameOnDocument          String?
+  frontStorageKey         String?
+  frontMimeType           String?
+  backStorageKey          String?
+  backMimeType            String?
+  status                  VendorIdentityDocumentStatus @default(PENDING)
+  adminFeedback           String?
+  uploadedAt              DateTime                     @default(now())
+  reviewedAt              DateTime?
+  resubmittedAt           DateTime?
+  createdAt               DateTime                     @default(now())
+  application             VendorKycApplication         @relation(fields: [kycApplicationId], references: [id], onDelete: Restrict)
+  reviewLogs              VendorKycReviewLog[]
+
+  @@index([kycApplicationId, documentType, createdAt])
+  @@index([status, uploadedAt])
+}
+
+model VendorKycReviewLog {
+  id             String                  @id @default(uuid()) @db.Uuid
+  applicationId  String                  @db.Uuid
+  documentId     String?                 @db.Uuid
+  reviewerUserId String                  @db.Uuid
+  action         String
+  previousStatus String?
+  newStatus      String?
+  feedback       String?
+  createdAt      DateTime                @default(now())
+  application    VendorKycApplication    @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  document       VendorIdentityDocument? @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  reviewer       User                    @relation("VendorKycReviewer", fields: [reviewerUserId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId, createdAt])
+  @@index([documentId, createdAt])
+  @@index([reviewerUserId, createdAt])
+}
+
+// ── Repair Service Catalog & Compatibility ────────────────────────────────────────
+model RepairCategory {
+  id       String          @id @default(uuid()) @db.Uuid
+  name     String          @unique
+  active   Boolean         @default(true)
+  services RepairService[]
+
+  @@map("Category")
+}
+
+model RepairService {
+  id               String                       @id @default(uuid()) @db.Uuid
+  categoryId       String                       @db.Uuid
+  name             String
+  description      String?
+  basePrice        Decimal?                     @db.Decimal(12, 2)
+  active           Boolean                      @default(true)
+  image            String?                      @map("imageUrl")
+  category         RepairCategory               @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  compatibility    DeviceServiceCompatibility[]
+  partMappings     RepairServicePart[]
+  bookings         Booking[]
+  technicianSkills TechnicianSkill[]
+
+  @@unique([categoryId, name])
+  @@index([active])
+}
+
+model DeviceServiceCompatibility {
+  modelId   String        @db.Uuid
+  serviceId String        @db.Uuid
+  model     DeviceModel   @relation(fields: [modelId], references: [id], onDelete: Restrict)
+  service   RepairService @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@id([modelId, serviceId])
+}
+
+model RepairServicePart {
+  serviceId String        @db.Uuid
+  partId    String        @db.Uuid
+  service   RepairService @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  part      Part          @relation(fields: [partId], references: [id], onDelete: Restrict)
+
+  @@id([serviceId, partId])
+  @@index([partId])
+}
+
+// ── Technician Profiles & Skills ──────────────────────────────────────────────────
+model TechnicianProfile {
+  id          String             @id @default(uuid()) @db.Uuid
+  userId      String             @unique @db.Uuid
+  approvedAt  DateTime?
+  active      Boolean            @default(true)
+  user        User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  skills      TechnicianSkill[]
+  assignments RepairAssignment[]
+}
+
+model TechnicianSkill {
+  technicianId String            @db.Uuid
+  serviceId    String            @db.Uuid
+  technician   TechnicianProfile @relation(fields: [technicianId], references: [id], onDelete: Restrict)
+  service      RepairService     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@id([technicianId, serviceId])
+}
+
+// ── Booking & Technician Assignment ───────────────────────────────────────────────
+model Booking {
+  id                 String               @id @default(uuid()) @db.Uuid
+  reference          String               @unique
+  userId             String               @db.Uuid
+  deviceId           String               @db.Uuid
+  serviceId          String               @db.Uuid
+  partGradeId        String?              @db.Uuid
+  partNameSnapshot   String?
+  gradeNameSnapshot  String?
+  gradePriceSnapshot Decimal?             @db.Decimal(12, 2)
+  addressId          String?              @db.Uuid
+  problemDescription String
+  scheduledAt        DateTime?
+  status             BookingStatus        @default(REQUESTED)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  user               User                 @relation("BookingUser", fields: [userId], references: [id], onDelete: Restrict)
+  device             UserDevice           @relation(fields: [deviceId], references: [id], onDelete: Restrict)
+  service            RepairService        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  partGrade          PartGrade?           @relation(fields: [partGradeId], references: [id], onDelete: Restrict)
+  address            Address?             @relation(fields: [addressId], references: [id], onDelete: Restrict)
+  statusEvents       BookingStatusEvent[]
+  assignments        RepairAssignment[]
+  inspection         RepairInspection?
+  estimates          RepairEstimate[]
+  partRequests       PartRequest[]
+  payments           Payment[]
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([partGradeId])
+}
+
+model BookingStatusEvent {
+  id          String        @id @default(uuid()) @db.Uuid
+  bookingId   String        @db.Uuid
+  status      BookingStatus
+  actorUserId String?       @db.Uuid
+  note        String?
+  createdAt   DateTime      @default(now())
+  booking     Booking       @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId, createdAt])
+}
+
+model RepairAssignment {
+  id           String            @id @default(uuid()) @db.Uuid
+  bookingId    String            @db.Uuid
+  technicianId String            @db.Uuid
+  status       AssignmentStatus  @default(OFFERED)
+  assignedAt   DateTime          @default(now())
+  decidedAt    DateTime?
+  booking      Booking           @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  technician   TechnicianProfile @relation(fields: [technicianId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId, assignedAt])
+  @@index([technicianId, status])
+}
+
+// ── Inspection & Repair Estimates ─────────────────────────────────────────────────
+model RepairInspection {
+  id              String           @id @default(uuid()) @db.Uuid
+  bookingId       String           @unique @db.Uuid
+  findings        String
+  technicianNotes String?
+  createdAt       DateTime         @default(now())
+  booking         Booking          @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  evidence        RepairEvidence[]
+
+  @@map("Inspection")
+}
+
+model RepairEvidence {
+  id           String           @id @default(uuid()) @db.Uuid
+  inspectionId String           @db.Uuid
+  objectKey    String
+  mediaType    String
+  byteSize     Int
+  phase        String
+  createdAt    DateTime         @default(now())
+  inspection   RepairInspection @relation(fields: [inspectionId], references: [id], onDelete: Restrict)
+
+  @@index([inspectionId])
+  @@map("Evidence")
+}
+
+model RepairEstimate {
+  id          String                   @id @default(uuid()) @db.Uuid
+  bookingId   String                   @db.Uuid
+  version     Int
+  status      EstimateStatus           @default(DRAFT)
+  submittedAt DateTime?
+  createdAt   DateTime                 @default(now())
+  booking     Booking                  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  lines       RepairEstimateLine[]
+  decisions   RepairEstimateDecision[]
+
+  @@unique([bookingId, version])
+}
+
+model RepairEstimateLine {
+  id          String         @id @default(uuid()) @db.Uuid
+  estimateId  String         @db.Uuid
+  description String
+  quantity    Decimal        @db.Decimal(10, 2)
+  unitAmount  Decimal        @db.Decimal(12, 2)
+  estimate    RepairEstimate @relation(fields: [estimateId], references: [id], onDelete: Restrict)
+}
+
+model RepairEstimateDecision {
+  id          String         @id @default(uuid()) @db.Uuid
+  estimateId  String         @db.Uuid
+  accepted    Boolean
+  actorUserId String         @db.Uuid
+  reason      String?
+  decidedAt   DateTime       @default(now())
+  estimate    RepairEstimate @relation(fields: [estimateId], references: [id], onDelete: Restrict)
+
+  @@index([estimateId, decidedAt])
+}
+
+// ── Spare Parts & Inventory ───────────────────────────────────────────────────────
+model Part {
+  id              String              @id @default(uuid()) @db.Uuid
+  sku             String?             @unique
+  name            String?
+  active          Boolean             @default(true)
+  image           String?             @map("imageUrl")
+  sellingPrice    Decimal?            @db.Decimal(12, 2)
+  serviceMappings RepairServicePart[]
+  compatibility   PartCompatibility[]
+  grades          PartGrade[]
+  stock           HubInventory[]
+  movements       InventoryMovement[]
+}
+
+model PartGrade {
+  id        String    @id @default(uuid()) @db.Uuid
+  partId    String    @db.Uuid
+  name      String
+  price     Decimal?  @db.Decimal(12, 2)
+  image     String?
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  part      Part      @relation(fields: [partId], references: [id], onDelete: Restrict)
+  bookings  Booking[]
+
+  @@unique([partId, name])
+  @@index([partId, active])
+}
+
+model PartCompatibility {
+  partId  String      @db.Uuid
+  modelId String      @db.Uuid
+  part    Part        @relation(fields: [partId], references: [id], onDelete: Restrict)
+  model   DeviceModel @relation(fields: [modelId], references: [id], onDelete: Restrict)
+
+  @@id([partId, modelId])
+}
+
+model Hub {
+  id        String              @id @default(uuid()) @db.Uuid
+  name      String
+  code      String              @unique
+  active    Boolean             @default(true)
+  stock     HubInventory[]
+  movements InventoryMovement[]
+}
+
+model HubInventory {
+  hubId    String @db.Uuid
+  partId   String @db.Uuid
+  quantity Int    @default(0)
+  hub      Hub    @relation(fields: [hubId], references: [id], onDelete: Restrict)
+  part     Part   @relation(fields: [partId], references: [id], onDelete: Restrict)
+
+  @@id([hubId, partId])
+}
+
+model InventoryMovement {
+  id            String                @id @default(uuid()) @db.Uuid
+  hubId         String                @db.Uuid
+  partId        String                @db.Uuid
+  quantityDelta Int
+  type          InventoryMovementType
+  reference     String?
+  actorUserId   String?               @db.Uuid
+  createdAt     DateTime              @default(now())
+  hub           Hub                   @relation(fields: [hubId], references: [id], onDelete: Restrict)
+  part          Part                  @relation(fields: [partId], references: [id], onDelete: Restrict)
+
+  @@index([hubId, partId, createdAt])
+}
+
+// ── Parts Requests ────────────────────────────────────────────────────────────────
+model PartRequest {
+  id        String            @id @default(uuid()) @db.Uuid
+  bookingId String            @db.Uuid
+  status    String            @default("REQUESTED")
+  createdAt DateTime          @default(now())
+  booking   Booking           @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  lines     PartRequestLine[]
+}
+
+model PartRequestLine {
+  id        String      @id @default(uuid()) @db.Uuid
+  requestId String      @db.Uuid
+  partId    String      @db.Uuid
+  quantity  Int
+  request   PartRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+
+  @@index([requestId])
+}
+
+// ── Payments & Refunds ────────────────────────────────────────────────────────────
+model Payment {
+  id             String           @id @default(uuid()) @db.Uuid
+  bookingId      String           @db.Uuid
+  amount         Decimal          @db.Decimal(12, 2)
+  currency       String           @db.VarChar(3)
+  status         PaymentStatus    @default(PENDING)
+  idempotencyKey String?          @unique
+  createdAt      DateTime         @default(now())
+  booking        Booking          @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  attempts       PaymentAttempt[]
+  refunds        Refund[]
+
+  @@index([bookingId, createdAt])
+}
+
+model PaymentAttempt {
+  id                String   @id @default(uuid()) @db.Uuid
+  paymentId         String   @db.Uuid
+  providerReference String?
+  status            String
+  createdAt         DateTime @default(now())
+  payment           Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId, createdAt])
+}
+
+model Refund {
+  id        String   @id @default(uuid()) @db.Uuid
+  paymentId String   @db.Uuid
+  amount    Decimal  @db.Decimal(12, 2)
+  reference String?  @unique
+  createdAt DateTime @default(now())
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId, createdAt])
+}
+
+// ── Audit Logs ────────────────────────────────────────────────────────────────────
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+}

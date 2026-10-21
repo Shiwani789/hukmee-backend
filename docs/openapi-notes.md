@@ -1,0 +1,1 @@
+The interactive Swagger UI is served at `/docs`. The first iteration declares the OpenAPI document endpoint but uses route-level request schemas as the source of validation. Detailed operation-level OpenAPI annotations should be added alongside each confirmed endpoint so the published contract stays synchronized with behavior.

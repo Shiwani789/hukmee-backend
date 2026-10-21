@@ -1,0 +1,18 @@
+{
+  "root": true,
+  "env": { "es2022": true, "node": true, "jest": true },
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  "ignorePatterns": [
+    "dist/",
+    "node_modules/",
+    "src/modules/banner/**",
+    "src/modules/cms/**",
+    "src/modules/kyc/**",
+    "src/modules/notification/**",
+    "src/modules/payment/**",
+    "src/modules/review/**",
+    "src/modules/vendor/**"
+  ]
+}
